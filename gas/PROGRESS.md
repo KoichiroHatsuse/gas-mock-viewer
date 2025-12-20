@@ -94,7 +94,39 @@ npx clasp logs
 
 ---
 
+## 2025-12-20 セッション記録
+
+### 完了した作業
+
+1. **要件とモックの整合性確認**
+   - specs/pdf_organizer.md と HTML モックを比較
+   - 主要機能は実装済み、軽微な差異のみ（許容）
+
+2. **モック一覧のカテゴリ分け（v14, v15）**
+   - 検討中 / 確定 / 不要 の3カテゴリで表示
+   - 不要なものは薄く表示して下部に配置
+   - 重複していたステータスバッジを削除
+
+3. **GitHub リポジトリ作成**
+   - https://github.com/KoichiroHatsuse/gas-mock-viewer
+   - README.md 追加済み
+
+4. **Backlog スキル作成**
+   - 場所: `~/.claude/skills/backlog/SKILL.md`
+   - 機能: 課題一覧、課題作成、コメント追加、ステータス更新など
+
+### 保留中（再起動後に確認）
+
+1. **Backlog APIキー設定**
+   - ファイル: `~/.claude/settings.json`
+   - `"BACKLOG_API_KEY": "ここにAPIキーを入力"` を実際のキーに置き換え
+   - APIキー発行: https://iyell.backlog.com/EditApiSettings.action
+   - 設定後「Backlogのプロジェクト一覧を見せて」で動作確認
+
+---
+
 ## 次にやること
 
-1. PDF整理ツール（split/grid）のどちらを採用するか決定
-2. 新しいモックの追加
+1. Backlog APIキーを設定して動作確認
+2. PDF整理ツール（split/grid）のどちらを採用するか決定
+3. 新しいモックの追加
