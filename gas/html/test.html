@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>テストページ</title>
+</head>
+<body>
+  <h1>テストページが表示されました</h1>
+  <p>このページが見えていれば、基本的なページ遷移は動作しています。</p>
+  <a id="backLink" href="#" target="_top">一覧に戻る</a>
+  <script>
+    google.script.run
+      .withSuccessHandler(function(url) {
+        document.getElementById('backLink').href = url + '?page=index';
+      })
+      .getWebAppUrl();
+  </script>
+</body>
+</html>

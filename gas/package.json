@@ -1,0 +1,20 @@
+{
+  "name": "gas-mock-viewer",
+  "version": "1.0.0",
+  "description": "GASベースのモック表示システム",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "push": "npm run build && clasp push --force",
+    "push:watch": "npm run build && clasp push --watch",
+    "deploy": "npm run push && clasp deploy -i AKfycbxtgajv4vQRCdTXc0OdCcRHHOpS2z4gR8CfpsAu1cRIVLCgUdvBjQAOxXdxy6wzsCqL",
+    "deploy:new": "npm run push && clasp deploy",
+    "open": "clasp open",
+    "logs": "clasp logs"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.2",
+    "@types/google-apps-script": "^1.0.83",
+    "typescript": "^5.3.3"
+  }
+}

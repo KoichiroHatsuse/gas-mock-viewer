@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF整理ツール（グリッド版）</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --line: #e1e4e8;
+      --text: #24292f;
+      --muted: #656d76;
+      --blue: #0969da;
+      --blue-light: #ddf4ff;
+      --red: #cf222e;
+      --green: #1a7f37;
+      --green-light: #dafbe1;
+      --yellow: #9a6700;
+      --yellow-light: #fff8c5;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+    }
+    .btn:hover { background: var(--bg); }
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+      border-color: var(--blue);
+    }
+    .btn-primary:hover { background: #0860ca; }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .toolbar-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--line);
+    }
+    .toolbar-info {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Banner */
+    .banner {
+      padding: 10px 20px;
+      font-size: 13px;
+      display: none;
+    }
+    .banner.ok { background: var(--green-light); color: var(--green); display: block; }
+    .banner.warn { background: var(--yellow-light); color: var(--yellow); display: block; }
+    .banner.bad { background: #ffebe9; color: var(--red); display: block; }
+    .banner .closeTabBtn {
+      margin-left: 12px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: none;
+      background: var(--green);
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* Grid */
+    .grid-container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .page-card {
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      padding: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .page-card:hover {
+      border-color: var(--muted);
+    }
+    .page-card[aria-selected="true"] {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-light);
+    }
+    .page-card.dragging {
+      opacity: 0.3;
+      border-style: dashed;
+      transform: scale(0.95);
+    }
+    .page-card.drag-over-left::before,
+    .page-card.drag-over-right::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--blue);
+      border-radius: 2px;
+    }
+    .page-card.drag-over-left::before { left: -10px; }
+    .page-card.drag-over-right::after { right: -10px; }
+    .page-card {
+      position: relative;
+      transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+    }
+    .page-preview {
+      aspect-ratio: 1 / 1.414;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 8px;
+      transition: transform 0.2s;
+    }
+    .page-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .page-label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .page-source {
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .page-rot {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .page-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .page-actions button {
+      flex: 1;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--card);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .page-actions button:hover { background: var(--bg); }
+    .page-actions .del { color: var(--red); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: var(--radius);
+      width: min(500px, 90vw);
+    }
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 { font-size: 16px; }
+    .modal-body { padding: 16px; }
+    .folder-list { display: flex; flex-direction: column; gap: 8px; }
+    .folder-item {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .folder-item:hover { background: var(--bg); }
+    .folder-name { font-weight: 600; }
+    .folder-path { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Empty State */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>PDF整理ツール</h1>
+    <div class="header-right">
+      <button class="btn" id="undoBtn" disabled>Undo</button>
+      <button class="btn" id="resetBtn">リセット</button>
+      <button class="btn btn-primary" id="saveBtn">保存</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn" id="rotateLeftBtn">↺ 左90°</button>
+    <button class="btn" id="rotateRightBtn">↻ 右90°</button>
+    <span class="toolbar-sep"></span>
+    <button class="btn" id="deleteBtn" style="color:var(--red)">選択ページを削除</button>
+    <span class="toolbar-sep"></span>
+    <span class="toolbar-info" id="selInfo">選択: なし</span>
+  </div>
+
+  <div id="banner" class="banner"></div>
+
+  <div class="grid-container">
+    <div class="page-grid" id="pageGrid"></div>
+  </div>
+
+  <!-- Folder Picker Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>保存先フォルダを選択</h2>
+        <button class="btn" id="closeModalBtn">閉じる</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:12px; color:var(--red); font-size:13px;">
+          起動元フォルダに保存できませんでした。別のフォルダを選択してください。
+        </p>
+        <div class="folder-list" id="folderList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock Data
+    const initialPages = Array.from({length: 12}).map((_, i) => ({
+      id: crypto.randomUUID(),
+      pageNo: i + 1,
+      rotation: 0,
+      source: i < 4 ? "書類A.pdf" : (i < 8 ? "書類B.pdf" : "書類C.pdf")
+    }));
+
+    const folders = [
+      { id: "fld_001", name: "案件_佐藤様", path: "マイドライブ/案件" },
+      { id: "fld_002", name: "案件_鈴木様", path: "マイドライブ/案件" },
+      { id: "fld_003", name: "作業用フォルダ", path: "共有ドライブ" },
+    ];
+
+    // State
+    let pages = structuredClone(initialPages);
+    let selectedId = null;
+    let lastAction = null;
+    let permissionError = false;
+    let draggedId = null;
+
+    const el = id => document.getElementById(id);
+
+    function setBanner(type, text, showCloseBtn = false) {
+      const b = el("banner");
+      b.className = "banner " + type;
+      b.innerHTML = text;
+      if (showCloseBtn) {
+        const btn = document.createElement("button");
+        btn.className = "closeTabBtn";
+        btn.textContent = "閉じてDriveに戻る";
+        btn.onclick = () => alert("実装時: window.close()");
+        b.appendChild(btn);
+      }
+      if (!showCloseBtn) {
+        setTimeout(() => b.className = "banner", 3000);
+      }
+    }
+
+    function snapshot(type) {
+      lastAction = { type, pages: structuredClone(pages), selectedId };
+    }
+
+    function rotate(id, delta) {
+      const p = pages.find(x => x.id === id);
+      if (!p) return;
+      snapshot("rotate");
+      p.rotation = (p.rotation + delta + 360) % 360;
+      render();
+      setBanner("warn", "回転しました");
+    }
+
+    function deletePage(id) {
+      const idx = pages.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      snapshot("delete");
+      pages.splice(idx, 1);
+      if (selectedId === id) selectedId = null;
+      render();
+      setBanner("bad", "ページを削除しました");
+    }
+
+    function undo() {
+      if (!lastAction) return;
+      pages = structuredClone(lastAction.pages);
+      selectedId = lastAction.selectedId;
+      lastAction = null;
+      render();
+      setBanner("warn", "Undoしました");
+    }
+
+    let dragOverId = null;
+    let dragOverPos = null;
+
+    function reorder(dragId, targetId, position) {
+      if (dragId === targetId) return;
+      snapshot("reorder");
+      const from = pages.findIndex(x => x.id === dragId);
+      let to = pages.findIndex(x => x.id === targetId);
+      const [item] = pages.splice(from, 1);
+      if (from < to) to--;
+      if (position === 'right') to++;
+      pages.splice(to, 0, item);
+      render();
+      setBanner("warn", "ページを移動しました");
+    }
+
+    function clearDragClasses() {
+      document.querySelectorAll('.page-card').forEach(el => {
+        el.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+      });
+    }
+
+    function render() {
+      const grid = el("pageGrid");
+
+      if (!pages.length) {
+        grid.innerHTML = '<div class="empty">ページがありません</div>';
+        el("selInfo").textContent = "選択: なし";
+        el("undoBtn").disabled = !lastAction;
+        return;
+      }
+
+      grid.innerHTML = "";
+      pages.forEach((p, i) => {
+        const card = document.createElement("div");
+        card.className = "page-card";
+        card.draggable = true;
+        card.dataset.id = p.id;
+        card.setAttribute("aria-selected", p.id === selectedId);
+
+        card.onclick = () => {
+          selectedId = selectedId === p.id ? null : p.id;
+          render();
+        };
+
+        card.ondragstart = e => {
+          draggedId = p.id;
+          card.classList.add("dragging");
+          e.dataTransfer.effectAllowed = 'move';
+        };
+
+        card.ondragend = () => {
+          draggedId = null;
+          dragOverId = null;
+          dragOverPos = null;
+          clearDragClasses();
+        };
+
+        card.ondragover = e => {
+          e.preventDefault();
+          if (draggedId === p.id) return;
+          const rect = card.getBoundingClientRect();
+          const midX = rect.left + rect.width / 2;
+          const pos = e.clientX < midX ? 'left' : 'right';
+
+          if (dragOverId !== p.id || dragOverPos !== pos) {
+            clearDragClasses();
+            document.querySelector(`[data-id="${draggedId}"]`)?.classList.add('dragging');
+            dragOverId = p.id;
+            dragOverPos = pos;
+            card.classList.add(pos === 'left' ? 'drag-over-left' : 'drag-over-right');
+          }
+        };
+
+        card.ondragleave = () => {
+          card.classList.remove('drag-over-left', 'drag-over-right');
+        };
+
+        card.ondrop = e => {
+          e.preventDefault();
+          if (draggedId && draggedId !== p.id) {
+            reorder(draggedId, p.id, dragOverPos);
+          }
+          clearDragClasses();
+        };
+
+        card.innerHTML = `
+          <div class="page-preview" style="transform: rotate(${p.rotation}deg)">${p.pageNo}</div>
+          <div class="page-meta">
+            <div>
+              <div class="page-label">${i+1}番目（元:${p.pageNo}）</div>
+              <div class="page-source">${p.source}</div>
+            </div>
+            <span class="page-rot">${p.rotation}°</span>
+          </div>
+          <div class="page-actions">
+            <button title="左回転">↺</button>
+            <button title="右回転">↻</button>
+            <button class="del" title="削除">×</button>
+          </div>
+        `;
+
+        const btns = card.querySelectorAll(".page-actions button");
+        btns[0].onclick = e => { e.stopPropagation(); rotate(p.id, -90); };
+        btns[1].onclick = e => { e.stopPropagation(); rotate(p.id, 90); };
+        btns[2].onclick = e => { e.stopPropagation(); deletePage(p.id); };
+
+        grid.appendChild(card);
+      });
+
+      // Update toolbar info
+      const selIdx = pages.findIndex(x => x.id === selectedId);
+      if (selIdx >= 0) {
+        const p = pages[selIdx];
+        el("selInfo").textContent = `選択: ${selIdx+1}番目（元:${p.pageNo}ページ）- ${p.source}`;
+      } else {
+        el("selInfo").textContent = `${pages.length}ページ（クリックで選択・ドラッグで並べ替え）`;
+      }
+      el("undoBtn").disabled = !lastAction;
+    }
+
+    // Save
+    function save() {
+      if (!pages.length) { setBanner("bad", "ページがありません"); return; }
+      setTimeout(() => {
+        if (permissionError) {
+          setBanner("bad", "保存できません - フォルダを選択してください");
+          openModal();
+          return;
+        }
+        const now = new Date();
+        const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+        setBanner("ok", `保存しました: 提出用_${ts}.pdf`, true);
+      }, 500);
+    }
+
+    function openModal() {
+      const list = el("folderList");
+      list.innerHTML = "";
+      folders.forEach(f => {
+        const item = document.createElement("div");
+        item.className = "folder-item";
+        item.innerHTML = `<div class="folder-name">${f.name}</div><div class="folder-path">${f.path}</div>`;
+        item.onclick = () => { closeModal(); permissionError = false; save(); };
+        list.appendChild(item);
+      });
+      el("modalOverlay").style.display = "flex";
+    }
+    function closeModal() { el("modalOverlay").style.display = "none"; }
+
+    // Events
+    el("rotateLeftBtn").onclick = () => selectedId && rotate(selectedId, -90);
+    el("rotateRightBtn").onclick = () => selectedId && rotate(selectedId, 90);
+    el("deleteBtn").onclick = () => selectedId && deletePage(selectedId);
+    el("undoBtn").onclick = undo;
+    el("saveBtn").onclick = save;
+    el("resetBtn").onclick = () => {
+      pages = structuredClone(initialPages);
+      selectedId = null;
+      lastAction = null;
+      render();
+      setBanner("warn", "リセットしました");
+    };
+    el("closeModalBtn").onclick = closeModal;
+    el("modalOverlay").onclick = e => { if (e.target === el("modalOverlay")) closeModal(); };
+
+    render();
+  </script>
+</body>
+</html>

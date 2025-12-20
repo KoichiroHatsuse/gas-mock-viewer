@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF整理ツール（Drive風モック）</title>
+  <style>
+    :root{
+      --bg:#f6f8fc;
+      --card:#ffffff;
+      --line:#e3e7f1;
+      --text:#1f2a44;
+      --muted:#5d6b89;
+      --blue:#1a73e8;
+      --blue2:#174ea6;
+      --bad:#d93025;
+      --warn:#f29900;
+      --ok:#188038;
+      --shadow: 0 6px 18px rgba(18,38,63,.08);
+      --radius: 16px;
+      --radius2: 12px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* --- Drive-like shell --- */
+    .topbar{
+      position:sticky; top:48px; z-index:20;
+      display:flex; align-items:center; justify-content:space-between;
+      height:64px;
+      padding: 0 14px;
+      background: var(--card);
+      border-bottom:1px solid var(--line);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      min-width: 260px;
+    }
+    .logoDot{
+      width:28px;height:28px;border-radius:8px;
+      background: linear-gradient(135deg, #34a853, #4285f4);
+      box-shadow: var(--shadow);
+    }
+    .brand .name{font-weight:800}
+    .search{
+      flex:1;
+      max-width: 720px;
+      display:flex; align-items:center; gap:10px;
+      background: #eef3fd;
+      border:1px solid #e1e8fb;
+      border-radius: 999px;
+      padding: 10px 14px;
+      margin: 0 14px;
+    }
+    .search input{
+      border:none; outline:none; background:transparent;
+      width:100%;
+      font-size:14px;
+    }
+    .actions{
+      display:flex; align-items:center; gap:10px;
+    }
+    .pill{
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; color: var(--muted);
+      padding: 8px 10px;
+      border:1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      box-shadow: 0 2px 10px rgba(0,0,0,.03);
+      white-space: nowrap;
+    }
+    .pill b{color: var(--text)}
+    .btn{
+      cursor:pointer;
+      border:1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      font-weight:700;
+      box-shadow: 0 2px 10px rgba(0,0,0,.03);
+    }
+    .btn.primary{
+      background: linear-gradient(180deg, #2b7de9, var(--blue));
+      color: #fff;
+      border-color: rgba(26,115,232,.35);
+    }
+    .btn.danger{
+      color: #fff;
+      background: linear-gradient(180deg, #ea4335, var(--bad));
+      border-color: rgba(217,48,37,.35);
+    }
+    .btn:disabled{opacity:.55; cursor:not-allowed}
+
+    .shell{
+      display:grid;
+      grid-template-columns: 260px 420px 1fr;
+      gap: 14px;
+      padding: 14px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .panel{
+      background: var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      min-height: calc(100vh - 64px - 48px - 28px);
+    }
+    .ph{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      font-weight:800;
+    }
+    .sub{
+      font-size:12px;
+      color: var(--muted);
+      font-weight:600;
+    }
+    .body{padding: 12px 14px;}
+
+    /* --- Left nav (Drive-like) --- */
+    .navItem{
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+      border:1px solid transparent;
+    }
+    .navItem.active{
+      background: #e8f0fe;
+      border-color: rgba(26,115,232,.25);
+      color: var(--blue2);
+      font-weight:800;
+    }
+    .navIcon{
+      width:28px;height:28px;border-radius:10px;
+      background:#f1f4fb;
+      border:1px solid var(--line);
+      display:flex; align-items:center; justify-content:center;
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size:12px;
+    }
+
+    /* --- File list mock (center) --- */
+    .fileListHead{
+      display:grid;
+      grid-template-columns: 1.4fr .6fr .6fr;
+      gap: 10px;
+      padding: 10px 14px;
+      color: var(--muted);
+      font-size:12px;
+      border-bottom:1px solid var(--line);
+      background: #fbfcff;
+    }
+    .fileRow{
+      display:grid;
+      grid-template-columns: 1.4fr .6fr .6fr;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom:1px solid var(--line);
+      align-items:center;
+      cursor:pointer;
+    }
+    .fileRow:hover{background:#f7faff}
+    .fileName{
+      display:flex; align-items:center; gap:10px;
+      font-weight:700;
+    }
+    .pdfIcon{
+      width:28px;height:28px;border-radius:10px;
+      background: rgba(217,48,37,.10);
+      border:1px solid rgba(217,48,37,.22);
+      display:flex; align-items:center; justify-content:center;
+      color: var(--bad);
+      font-weight:900;
+      font-size:12px;
+    }
+    .small{font-size:12px; color: var(--muted); font-weight:600}
+
+    /* --- Editor (right) --- */
+    .editorGrid{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 12px;
+    }
+    .hint{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.45;
+    }
+    .thumbList{
+      display:flex; flex-direction:column; gap:10px;
+      padding: 12px 14px 14px;
+    }
+    .thumb{
+      display:grid;
+      grid-template-columns: 54px 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:10px;
+      border:1px solid var(--line);
+      border-radius: 14px;
+      user-select:none;
+      background:#fff;
+    }
+    .thumb[aria-selected="true"]{
+      outline:2px solid rgba(26,115,232,.35);
+      background: #f3f8ff;
+    }
+    .pagebox{
+      width:54px;height:54px;border-radius:12px;
+      border:1px dashed rgba(93,107,137,.35);
+      background: #fbfcff;
+      display:flex; align-items:center; justify-content:center;
+      position:relative;
+      font-weight:900;
+      color:#33466b;
+    }
+    .rotBadge{
+      position:absolute; right:6px; bottom:6px;
+      font-size:11px;
+      color: var(--muted);
+      background: rgba(31,42,68,.06);
+      border:1px solid rgba(31,42,68,.10);
+      padding:2px 6px;
+      border-radius:999px;
+      font-weight:700;
+    }
+    .meta{display:flex; flex-direction:column; gap:2px}
+    .meta .name{font-weight:800}
+    .meta .sub2{font-size:12px; color: var(--muted); font-weight:600}
+    .iconbtn{
+      cursor:pointer;
+      width:36px;height:36px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      font-weight:900;
+      color:#33466b;
+    }
+    .iconbtn:hover{background:#f7faff}
+
+    .toolRow{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      background:#fbfcff;
+    }
+    .toolRow .sep{width:1px;height:28px;background:var(--line)}
+    .msg{
+      border-radius: 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background:#fff;
+      font-size:13px;
+      line-height:1.45;
+      margin: 12px 14px 0;
+      display:none;
+    }
+    .msg.ok{border-color: rgba(24,128,56,.25); background: rgba(24,128,56,.07)}
+    .msg.bad{border-color: rgba(217,48,37,.25); background: rgba(217,48,37,.07)}
+    .msg.warn{border-color: rgba(242,153,0,.25); background: rgba(242,153,0,.10)}
+    .msg .closeTabBtn{
+      margin-left: 12px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(24,128,56,.35);
+      background: var(--ok);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .msg .closeTabBtn:hover{background: #14662c}
+    .previewWrap{padding: 12px 14px 14px;}
+    .preview{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 14px;
+      min-height: 440px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.03);
+    }
+    .pTitle{font-weight:900; font-size:16px; margin-bottom:6px}
+    .pSub{font-size:12px; color: var(--muted); margin-bottom:14px}
+    .sheet{
+      width: min(560px, 82%);
+      height: 330px;
+      margin: 0 auto;
+      border-radius: 14px;
+      border: 1px solid rgba(93,107,137,.25);
+      background: linear-gradient(180deg, #ffffff, #fbfcff);
+      display:flex; align-items:center; justify-content:center;
+      position:relative;
+      transform-origin:center center;
+    }
+    .sheet::after{
+      content:"";
+      position:absolute; inset:10px;
+      border:1px dashed rgba(93,107,137,.28);
+      border-radius: 12px;
+    }
+    .big{
+      font-size: 52px;
+      font-weight: 1000;
+      color:#2b3f6a;
+      letter-spacing: 1px;
+    }
+
+    /* --- Modal (Folder Picker mock) --- */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(18,38,63,.45);
+      display:none;
+      align-items:center; justify-content:center;
+      z-index:60;
+    }
+    .modal{
+      width: min(760px, 92vw);
+      border-radius: 18px;
+      background:#fff;
+      border:1px solid var(--line);
+      box-shadow: 0 24px 70px rgba(18,38,63,.18);
+      overflow:hidden;
+    }
+    .modalHeader{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .folderGrid{
+      padding: 14px;
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+    .folder{
+      cursor:pointer;
+      border:1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background:#fff;
+    }
+    .folder:hover{background:#f7faff}
+    .folder .n{font-weight:900}
+    .folder .p{font-size:12px; color: var(--muted); margin-top:2px; font-weight:600}
+
+    @media (max-width: 1100px){
+      .shell{grid-template-columns: 1fr}
+      .panel{min-height: auto}
+      .editorGrid{grid-template-columns: 1fr}
+      .brand{min-width: 0}
+      .search{display:none}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logoDot"></div>
+      <div>
+        <div class="name">Drive（モック）</div>
+        <div class="sub">PDF整理ツール UI合意用</div>
+      </div>
+    </div>
+
+    <div class="search" aria-label="検索（ダミー）">
+      <span style="color:#6a7aa0;font-weight:900;">⌕</span>
+      <input placeholder="ドライブ内を検索（ダミー）" />
+    </div>
+
+    <div class="actions">
+      <div class="pill">保存先（原則）: <b id="folderName">案件_山田様_2025-12</b></div>
+      <div class="pill">合計サイズ: <b id="totalSize">128MB</b>（上限 300MB）</div>
+      <div class="pill">状態: <b id="stateText">編集中</b></div>
+      <button class="btn" id="togglePermissionBtn" title="保存時に権限エラー（フォールバック）を発生させる切替">権限エラー: OFF</button>
+      <button class="btn danger" id="resetBtn">リセット</button>
+      <button class="btn primary" id="saveBtn">保存</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- Left nav -->
+    <section class="panel" aria-label="左ナビ（Drive風）">
+      <div class="ph">ナビ（モック） <span class="sub">Driveっぽい見た目</span></div>
+      <div class="body">
+        <div class="navItem active"><div class="navIcon">🏠</div>マイドライブ</div>
+        <div class="navItem"><div class="navIcon">👥</div>共有ドライブ</div>
+        <div class="navItem"><div class="navIcon">⏱</div>最近使用</div>
+        <div class="navItem"><div class="navIcon">⭐</div>スター付き</div>
+        <div class="navItem"><div class="navIcon">🗑</div>ゴミ箱</div>
+        <div style="height:12px"></div>
+        <div class="hint">
+          <b>想定</b><br/>
+          Drive上でPDFを複数選択し、右クリック or 上部ボタン「PDF整理」で起動。
+        </div>
+      </div>
+    </section>
+
+    <!-- Center: file list -->
+    <section class="panel" aria-label="ファイル一覧（Drive風）">
+      <div class="ph">案件_山田様_2025-12 <span class="sub">ファイル一覧（ダミー）</span></div>
+
+      <div class="fileListHead">
+        <div>名前</div><div>更新日</div><div>サイズ</div>
+      </div>
+
+      <div class="fileRow" id="mockSelectHint" title="PDFを複数選択して起動する想定（ここは静的）">
+        <div class="fileName"><div class="pdfIcon">PDF</div>提出書類_A.pdf</div>
+        <div class="small">2025/12/19</div>
+        <div class="small">42MB</div>
+      </div>
+      <div class="fileRow">
+        <div class="fileName"><div class="pdfIcon">PDF</div>提出書類_B.pdf</div>
+        <div class="small">2025/12/19</div>
+        <div class="small">51MB</div>
+      </div>
+      <div class="fileRow">
+        <div class="fileName"><div class="pdfIcon">PDF</div>提出書類_C.pdf</div>
+        <div class="small">2025/12/19</div>
+        <div class="small">35MB</div>
+      </div>
+
+      <div class="body">
+        <div class="hint">
+          <b>注記</b><br/>
+          ここは「Drive画面の雰囲気」再現です。実装ではDriveの選択状態から fileId / parentFolderId を取得します。
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: editor -->
+    <section class="panel" aria-label="編集画面（モック）">
+      <div class="ph">PDF整理（編集画面） <span class="sub">結合・回転・削除・並び替え・Undo</span></div>
+
+      <div class="editorGrid">
+        <div>
+          <div class="ph" style="border-bottom:1px solid var(--line); border-radius:0; box-shadow:none; background:#fbfcff;">
+            ページ一覧
+            <span class="sub">D&D</span>
+          </div>
+          <div class="thumbList" id="thumbList"></div>
+        </div>
+
+        <div>
+          <div class="toolRow">
+            <button class="btn" id="rotateLeftBtn">↺ 左回転</button>
+            <button class="btn" id="rotateRightBtn">↻ 右回転</button>
+            <span class="sep"></span>
+            <button class="btn danger" id="deleteBtn">ページ削除</button>
+            <button class="btn" id="undoBtn" disabled>Undo</button>
+            <span class="sep"></span>
+            <span class="hint">選択ページ: <b id="selInfo">-</b></span>
+          </div>
+
+          <div id="banner" class="msg"></div>
+
+          <div class="previewWrap">
+            <div class="preview">
+              <div class="pTitle" id="pTitle">ページ 1</div>
+              <div class="pSub" id="pSub">プレビューはダミー（UI合意用）</div>
+              <div class="sheet" id="sheet">
+                <div class="big" id="sheetText">1</div>
+                <div class="rotBadge" id="rotBadge">0°</div>
+              </div>
+
+              <div style="height:14px"></div>
+              <div class="hint">
+                <b>確認ポイント</b><br/>
+                ・並び替え（左）→プレビュー（右）の操作感<br/>
+                ・保存（右上）→起動元フォルダ保存<br/>
+                ・権限NG時のフォールバック（フォルダ選択）が許容か
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Folder Picker Modal -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-label="保存先フォルダ選択">
+    <div class="modal">
+      <div class="modalHeader">
+        <div>
+          <div style="font-weight:900;">保存先フォルダを選択してください</div>
+          <div class="sub">起動元フォルダに保存できませんでした（PERMISSION_DENIEDの想定）</div>
+        </div>
+        <button class="btn" id="closeModalBtn">閉じる</button>
+      </div>
+      <div class="body">
+        <div class="msg bad" style="display:block; margin:0 0 12px;">
+          このフォルダには保存できません。保存先を選び直してください。
+        </div>
+        <div class="folderGrid" id="folderGrid"></div>
+        <div class="hint" style="margin-top:12px;">
+          ※ 実装では Google Drive Picker を使用する想定。ここでは疑似フォルダ一覧です。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --------- Mock Data ---------
+    const initialPages = Array.from({length: 10}).map((_, i) => ({
+      id: crypto.randomUUID(),
+      pageNo: i + 1,
+      rotation: 0,
+      source: i < 4 ? "提出書類_A.pdf" : (i < 7 ? "提出書類_B.pdf" : "提出書類_C.pdf")
+    }));
+
+    const folders = [
+      { id: "fld_001", name: "案件_佐藤様_2025-12", path: "マイドライブ/案件/2025/12" },
+      { id: "fld_002", name: "案件_鈴木様_2025-12", path: "マイドライブ/案件/2025/12" },
+      { id: "fld_003", name: "作業用_一時フォルダ", path: "業務共通/作業用" },
+      { id: "fld_004", name: "共有ドライブ_審査提出", path: "共有ドライブ/審査/提出" },
+    ];
+
+    // --------- State ---------
+    let pages = structuredClone(initialPages);
+    let selectedId = pages[0]?.id ?? null;
+    let lastAction = null; // { type, beforePages, beforeSelectedId }
+    let permissionErrorOnSave = false;
+
+    const el = (id) => document.getElementById(id);
+
+    function setBanner(type, text, showCloseBtn = false) {
+      const b = el("banner");
+      b.className = "msg " + type;
+      b.innerHTML = text;
+      if (showCloseBtn) {
+        const btn = document.createElement("button");
+        btn.className = "closeTabBtn";
+        btn.textContent = "閉じてDriveに戻る";
+        btn.addEventListener("click", () => {
+          // 実際の実装では window.close() でタブを閉じる
+          alert("実装時: window.close() でタブを閉じます");
+        });
+        b.appendChild(btn);
+      }
+      b.style.display = "block";
+      window.clearTimeout(setBanner._t);
+      if (!showCloseBtn) {
+        setBanner._t = window.setTimeout(() => (b.style.display = "none"), 4200);
+      }
+    }
+
+    function renderHeaderState(label) {
+      el("stateText").textContent = label;
+    }
+
+    function snapshotForUndo(type) {
+      lastAction = {
+        type,
+        beforePages: structuredClone(pages),
+        beforeSelectedId: selectedId
+      };
+    }
+
+    function reorderById(arr, draggedId, targetId) {
+      const from = arr.findIndex(x => x.id === draggedId);
+      const to = arr.findIndex(x => x.id === targetId);
+      if (from < 0 || to < 0) return arr;
+      const copy = arr.slice();
+      const [item] = copy.splice(from, 1);
+      copy.splice(to, 0, item);
+      return copy;
+    }
+
+    function rotate(id, delta) {
+      const idx = pages.findIndex(p => p.id === id);
+      if (idx < 0) return;
+      snapshotForUndo("rotate");
+      pages[idx].rotation = (pages[idx].rotation + delta + 360) % 360;
+      renderAll();
+      setBanner("warn", "回転しました（" + (delta > 0 ? "右" : "左") + "）");
+    }
+
+    function deletePage(id) {
+      const idx = pages.findIndex(p => p.id === id);
+      if (idx < 0) return;
+      snapshotForUndo("delete");
+      pages.splice(idx, 1);
+      if (!pages.length) selectedId = null;
+      else if (!pages.some(p => p.id === selectedId)) selectedId = pages[Math.max(0, idx - 1)].id;
+      renderAll();
+      setBanner("bad", "ページを削除しました");
+    }
+
+    function undo() {
+      if (!lastAction) return;
+      pages = structuredClone(lastAction.beforePages);
+      selectedId = lastAction.beforeSelectedId;
+      lastAction = null;
+      renderAll();
+      setBanner("warn", "Undoしました（直前1回）");
+    }
+
+    function renderList() {
+      const list = el("thumbList");
+      list.innerHTML = "";
+      pages.forEach((p, idx) => {
+        const row = document.createElement("div");
+        row.className = "thumb";
+        row.draggable = true;
+        row.dataset.id = p.id;
+        row.setAttribute("aria-selected", p.id === selectedId ? "true" : "false");
+
+        row.addEventListener("click", () => {
+          selectedId = p.id;
+          renderAll();
+        });
+
+        row.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", p.id);
+          e.dataTransfer.effectAllowed = "move";
+        });
+        row.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+        row.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData("text/plain");
+          const targetId = p.id;
+          if (!draggedId || draggedId === targetId) return;
+          snapshotForUndo("reorder");
+          pages = reorderById(pages, draggedId, targetId);
+          renderAll();
+        });
+
+        const box = document.createElement("div");
+        box.className = "pagebox";
+        box.textContent = String(idx + 1);
+
+        const rot = document.createElement("div");
+        rot.className = "rotBadge";
+        rot.textContent = p.rotation + "°";
+        box.appendChild(rot);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = '<div class="name">ページ ' + (idx + 1) + '</div><div class="sub2">元: ' + p.source + '</div>';
+
+        const acts = document.createElement("div");
+        const btnL = document.createElement("button");
+        btnL.className = "iconbtn";
+        btnL.title = "左回転";
+        btnL.textContent = "↺";
+        btnL.addEventListener("click", (ev) => { ev.stopPropagation(); rotate(p.id, -90); });
+
+        const btnR = document.createElement("button");
+        btnR.className = "iconbtn";
+        btnR.title = "右回転";
+        btnR.textContent = "↻";
+        btnR.addEventListener("click", (ev) => { ev.stopPropagation(); rotate(p.id, +90); });
+
+        const btnX = document.createElement("button");
+        btnX.className = "iconbtn";
+        btnX.title = "削除";
+        btnX.textContent = "✕";
+        btnX.addEventListener("click", (ev) => { ev.stopPropagation(); deletePage(p.id); });
+
+        acts.append(btnL, btnR, btnX);
+
+        row.append(box, meta, acts);
+        list.appendChild(row);
+      });
+    }
+
+    function renderPreview() {
+      const idx = pages.findIndex(p => p.id === selectedId);
+      const p = pages[idx];
+
+      el("undoBtn").disabled = !lastAction;
+
+      if (!p) {
+        el("pTitle").textContent = "ページ -";
+        el("sheetText").textContent = "-";
+        el("rotBadge").textContent = "-";
+        el("selInfo").textContent = "-";
+        el("sheet").style.transform = "rotate(0deg)";
+        return;
+      }
+
+      el("pTitle").textContent = "ページ " + (idx + 1);
+      el("sheetText").textContent = String(idx + 1);
+      el("rotBadge").textContent = p.rotation + "°";
+      el("selInfo").textContent = "ページ " + (idx + 1) + "（元: " + p.source + "）";
+      el("sheet").style.transform = "rotate(" + p.rotation + "deg)";
+    }
+
+    function renderAll() {
+      renderList();
+      renderPreview();
+    }
+
+    // --------- Save Flow ---------
+    function buildOutputFilename(folderName) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const y = now.getFullYear();
+      const m = pad(now.getMonth() + 1);
+      const d = pad(now.getDate());
+      const hh = pad(now.getHours());
+      const mm = pad(now.getMinutes());
+      return "提出用_" + folderName + "_" + y + m + d + "_" + hh + mm + ".pdf";
+    }
+
+    function simulateSaveTo(folder) {
+      const filename = buildOutputFilename(folder.name);
+      renderHeaderState("保存完了");
+      setBanner("ok", "保存しました：" + filename + "（保存先: " + folder.name + "）", true);
+    }
+
+    function openFolderPicker() {
+      const grid = el("folderGrid");
+      grid.innerHTML = "";
+      folders.forEach(f => {
+        const card = document.createElement("div");
+        card.className = "folder";
+        card.innerHTML = '<div class="n">' + f.name + '</div><div class="p">' + f.path + '</div>';
+        card.addEventListener("click", () => { closeModal(); simulateSaveTo(f); });
+        grid.appendChild(card);
+      });
+      el("modalOverlay").style.display = "flex";
+    }
+
+    function closeModal() { el("modalOverlay").style.display = "none"; }
+
+    function onSave() {
+      if (!pages.length) { setBanner("bad", "ページがありません。"); return; }
+      renderHeaderState("保存中…");
+
+      setTimeout(() => {
+        if (permissionErrorOnSave) {
+          renderHeaderState("保存失敗");
+          setBanner("bad", "このフォルダに保存できません（PERMISSION_DENIED）→ フォルダ選択に切替");
+          openFolderPicker();
+          return;
+        }
+        const originFolder = { id: "origin", name: el("folderName").textContent, path: "マイドライブ/案件/..." };
+        simulateSaveTo(originFolder);
+      }, 650);
+    }
+
+    // --------- Events ---------
+    el("rotateLeftBtn").addEventListener("click", () => selectedId && rotate(selectedId, -90));
+    el("rotateRightBtn").addEventListener("click", () => selectedId && rotate(selectedId, +90));
+    el("deleteBtn").addEventListener("click", () => selectedId && deletePage(selectedId));
+    el("undoBtn").addEventListener("click", undo);
+
+    el("saveBtn").addEventListener("click", onSave);
+
+    el("resetBtn").addEventListener("click", () => {
+      pages = structuredClone(initialPages);
+      selectedId = pages[0]?.id ?? null;
+      lastAction = null;
+      permissionErrorOnSave = false;
+      el("togglePermissionBtn").textContent = "権限エラー: OFF";
+      renderHeaderState("編集中");
+      setBanner("warn", "リセットしました");
+      renderAll();
+    });
+
+    el("togglePermissionBtn").addEventListener("click", () => {
+      permissionErrorOnSave = !permissionErrorOnSave;
+      el("togglePermissionBtn").textContent = "権限エラー: " + (permissionErrorOnSave ? "ON" : "OFF");
+      setBanner("warn", "権限エラーシミュレーション：" + (permissionErrorOnSave ? "ON" : "OFF"));
+    });
+
+    el("closeModalBtn").addEventListener("click", closeModal);
+    el("modalOverlay").addEventListener("click", (e) => {
+      if (e.target === el("modalOverlay")) closeModal();
+    });
+
+    // Init
+    renderAll();
+    renderHeaderState("編集中");
+  </script>
+</body>
+</html>

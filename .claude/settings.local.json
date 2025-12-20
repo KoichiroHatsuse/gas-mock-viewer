@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(npx clasp:*)",
+      "Bash(cat:*)",
+      "mcp__context7__resolve-library-id",
+      "WebFetch(domain:script.google.com)",
+      "Bash(claude mcp remove:*)",
+      "mcp__context7__get-library-docs",
+      "Bash(rm:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

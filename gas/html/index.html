@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>モック一覧</title>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --card: #ffffff;
+      --line: #e3e7f1;
+      --text: #1f2a44;
+      --muted: #5d6b89;
+      --blue: #1a73e8;
+      --shadow: 0 6px 18px rgba(18,38,63,.08);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 20px 24px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(18,38,63,.12);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: #fff;
+    }
+    .card-title {
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .section {
+      margin-bottom: 32px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section.deprecated .card {
+      opacity: 0.6;
+    }
+    .section.deprecated .card:hover {
+      opacity: 1;
+    }
+
+    .card-desc {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .card-date {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>モック一覧</h1>
+    <p>UI合意用のモックを選択してください</p>
+  </div>
+
+  <div class="container" id="mockContainer"></div>
+
+  <script>
+    // WebアプリのベースURLとモック一覧を取得
+    let baseUrl = '';
+
+    google.script.run
+      .withSuccessHandler(function(url) {
+        baseUrl = url;
+        // ベースURL取得後にモック一覧を取得
+        google.script.run
+          .withSuccessHandler(renderMocks)
+          .withFailureHandler(showError)
+          .getMockList();
+      })
+      .withFailureHandler(showError)
+      .getWebAppUrl();
+
+    const statusConfig = {
+      '検討中': { label: '検討中（レビュー待ち）', class: 'reviewing', order: 1 },
+      '確定': { label: '確定', class: 'confirmed', order: 2 },
+      '不要': { label: '不要（参考用）', class: 'deprecated', order: 3 }
+    };
+
+    function renderMocks(mocks) {
+      const container = document.getElementById('mockContainer');
+
+      if (!mocks || mocks.length === 0) {
+        container.innerHTML = '<div class="empty">モックがまだ登録されていません</div>';
+        return;
+      }
+
+      // ステータス別にグループ化
+      const groups = {};
+      mocks.forEach(mock => {
+        const status = mock.status || '検討中';
+        if (!groups[status]) groups[status] = [];
+        groups[status].push(mock);
+      });
+
+      // ステータス順にソート
+      const sortedStatuses = Object.keys(groups).sort((a, b) =>
+        (statusConfig[a]?.order || 99) - (statusConfig[b]?.order || 99)
+      );
+
+      container.innerHTML = sortedStatuses.map(status => {
+        const config = statusConfig[status] || { label: status, class: '', order: 99 };
+        const mocksInGroup = groups[status];
+
+        return `
+          <div class="section ${config.class}">
+            <div class="section-title">${config.label}</div>
+            <div class="grid">
+              ${mocksInGroup.map(mock => `
+                <a href="${baseUrl}?page=${mock.id}" target="_top" class="card">
+                  <div class="card-header">
+                    <div class="card-icon" style="background: ${mock.color}">${mock.icon}</div>
+                    <div class="card-title">${mock.title}</div>
+                  </div>
+                  <div class="card-desc">${mock.description}</div>
+                  <div class="card-date">作成日: ${mock.createdAt}</div>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showError(error) {
+      document.getElementById('mockContainer').innerHTML =
+        '<div class="empty">エラーが発生しました: ' + error.message + '</div>';
+    }
+  </script>
+</body>
+</html>

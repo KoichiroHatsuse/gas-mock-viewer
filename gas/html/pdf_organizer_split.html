@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF整理ツール（2カラム版）</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --line: #e1e4e8;
+      --text: #24292f;
+      --muted: #656d76;
+      --blue: #0969da;
+      --blue-light: #ddf4ff;
+      --red: #cf222e;
+      --green: #1a7f37;
+      --green-light: #dafbe1;
+      --yellow: #9a6700;
+      --yellow-light: #fff8c5;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+    }
+    .btn:hover { background: var(--bg); }
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+      border-color: var(--blue);
+    }
+    .btn-primary:hover { background: #0860ca; }
+    .btn-danger {
+      background: var(--red);
+      color: white;
+      border-color: var(--red);
+    }
+
+    /* Main Layout */
+    .main {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Panel */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-body {
+      padding: 12px;
+    }
+
+    /* Page List */
+    .page-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+    }
+    .page-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: var(--card);
+      user-select: none;
+    }
+    .page-item:hover { background: var(--bg); }
+    .page-item[aria-selected="true"] {
+      border-color: var(--blue);
+      background: var(--blue-light);
+    }
+    .page-item.dragging {
+      opacity: 0.4;
+      border-style: dashed;
+    }
+    .page-item.drag-over-top::before,
+    .page-item.drag-over-bottom::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--blue);
+      border-radius: 2px;
+    }
+    .page-item.drag-over-top::before { top: -6px; }
+    .page-item.drag-over-bottom::after { bottom: -6px; }
+    .page-item {
+      position: relative;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .page-item.shift-down { transform: translateY(8px); }
+    .page-item.shift-up { transform: translateY(-8px); }
+    .page-thumb {
+      width: 40px;
+      height: 52px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--muted);
+      position: relative;
+    }
+    .page-thumb .rot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 9px;
+      background: var(--card);
+      padding: 1px 3px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+    }
+    .page-info {
+      flex: 1;
+    }
+    .page-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .page-source {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .page-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--card);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { background: var(--bg); }
+
+    /* Preview */
+    .preview-area {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 92px);
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .toolbar-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--line);
+    }
+    .toolbar-info {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .preview-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .preview-page {
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 1 / 1.414;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform 0.2s;
+    }
+    .preview-page::after {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border: 1px dashed var(--line);
+      border-radius: 4px;
+    }
+    .preview-num {
+      font-size: 72px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    /* Banner */
+    .banner {
+      padding: 10px 16px;
+      margin: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      display: none;
+    }
+    .banner.ok { background: var(--green-light); color: var(--green); display: block; }
+    .banner.warn { background: var(--yellow-light); color: var(--yellow); display: block; }
+    .banner.bad { background: #ffebe9; color: var(--red); display: block; }
+    .banner .closeTabBtn {
+      margin-left: 12px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: none;
+      background: var(--green);
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: var(--radius);
+      width: min(500px, 90vw);
+      max-height: 80vh;
+      overflow: auto;
+    }
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 { font-size: 16px; }
+    .modal-body { padding: 16px; }
+    .folder-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .folder-item {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .folder-item:hover { background: var(--bg); }
+    .folder-name { font-weight: 600; }
+    .folder-path { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    @media (max-width: 800px) {
+      .main { grid-template-columns: 1fr; }
+      .preview-area { height: auto; min-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <h1>PDF整理ツール</h1>
+    </div>
+    <div class="header-right">
+      <button class="btn" id="undoBtn" disabled>Undo</button>
+      <button class="btn" id="resetBtn">リセット</button>
+      <button class="btn btn-primary" id="saveBtn">保存</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Left: Page List -->
+    <div class="panel">
+      <div class="panel-header">
+        ページ一覧
+        <span style="font-weight:400; font-size:12px; color:var(--muted)">ドラッグで並び替え</span>
+      </div>
+      <div class="panel-body">
+        <div class="page-list" id="pageList"></div>
+      </div>
+    </div>
+
+    <!-- Right: Preview -->
+    <div class="panel preview-area">
+      <div class="toolbar">
+        <button class="btn" id="rotateLeftBtn">↺ 左90°</button>
+        <button class="btn" id="rotateRightBtn">↻ 右90°</button>
+        <span class="toolbar-sep"></span>
+        <button class="btn btn-danger" id="deleteBtn">削除</button>
+        <span class="toolbar-info" id="selInfo">-</span>
+      </div>
+      <div id="banner" class="banner"></div>
+      <div class="preview-content">
+        <div class="preview-page" id="previewPage">
+          <span class="preview-num" id="previewNum">1</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Folder Picker Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>保存先フォルダを選択</h2>
+        <button class="btn" id="closeModalBtn">閉じる</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:12px; color:var(--red); font-size:13px;">
+          起動元フォルダに保存できませんでした。別のフォルダを選択してください。
+        </p>
+        <div class="folder-list" id="folderList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock Data
+    const initialPages = Array.from({length: 8}).map((_, i) => ({
+      id: crypto.randomUUID(),
+      pageNo: i + 1,
+      rotation: 0,
+      source: i < 3 ? "書類A.pdf" : (i < 5 ? "書類B.pdf" : "書類C.pdf")
+    }));
+
+    const folders = [
+      { id: "fld_001", name: "案件_佐藤様", path: "マイドライブ/案件" },
+      { id: "fld_002", name: "案件_鈴木様", path: "マイドライブ/案件" },
+      { id: "fld_003", name: "作業用フォルダ", path: "共有ドライブ" },
+    ];
+
+    // State
+    let pages = structuredClone(initialPages);
+    let selectedId = pages[0]?.id ?? null;
+    let lastAction = null;
+    let permissionError = false;
+
+    const el = id => document.getElementById(id);
+
+    function setBanner(type, text, showCloseBtn = false) {
+      const b = el("banner");
+      b.className = "banner " + type;
+      b.innerHTML = text;
+      if (showCloseBtn) {
+        const btn = document.createElement("button");
+        btn.className = "closeTabBtn";
+        btn.textContent = "閉じてDriveに戻る";
+        btn.onclick = () => alert("実装時: window.close()");
+        b.appendChild(btn);
+      }
+      if (!showCloseBtn) {
+        setTimeout(() => b.className = "banner", 3000);
+      }
+    }
+
+    function snapshot(type) {
+      lastAction = { type, pages: structuredClone(pages), selectedId };
+    }
+
+    function rotate(id, delta) {
+      const p = pages.find(x => x.id === id);
+      if (!p) return;
+      snapshot("rotate");
+      p.rotation = (p.rotation + delta + 360) % 360;
+      render();
+      setBanner("warn", "回転しました");
+    }
+
+    function deletePage(id) {
+      const idx = pages.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      snapshot("delete");
+      pages.splice(idx, 1);
+      if (!pages.length) selectedId = null;
+      else if (!pages.find(x => x.id === selectedId))
+        selectedId = pages[Math.max(0, idx-1)].id;
+      render();
+      setBanner("bad", "ページを削除しました");
+    }
+
+    function undo() {
+      if (!lastAction) return;
+      pages = structuredClone(lastAction.pages);
+      selectedId = lastAction.selectedId;
+      lastAction = null;
+      render();
+      setBanner("warn", "Undoしました");
+    }
+
+    let draggedId = null;
+    let dragOverId = null;
+    let dragOverPos = null; // 'top' or 'bottom'
+
+    function reorder(dragId, targetId, position) {
+      if (dragId === targetId) return;
+      snapshot("reorder");
+      const from = pages.findIndex(x => x.id === dragId);
+      let to = pages.findIndex(x => x.id === targetId);
+      const [item] = pages.splice(from, 1);
+      // Adjust target index after removal
+      if (from < to) to--;
+      if (position === 'bottom') to++;
+      pages.splice(to, 0, item);
+      render();
+      setBanner("warn", "ページを移動しました");
+    }
+
+    function clearDragClasses() {
+      document.querySelectorAll('.page-item').forEach(el => {
+        el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom', 'shift-down', 'shift-up');
+      });
+    }
+
+    function renderList() {
+      const list = el("pageList");
+      list.innerHTML = "";
+      pages.forEach((p, i) => {
+        const item = document.createElement("div");
+        item.className = "page-item";
+        item.draggable = true;
+        item.dataset.id = p.id;
+        item.setAttribute("aria-selected", p.id === selectedId);
+        item.onclick = () => { selectedId = p.id; render(); };
+
+        item.ondragstart = e => {
+          draggedId = p.id;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        };
+
+        item.ondragend = () => {
+          draggedId = null;
+          dragOverId = null;
+          dragOverPos = null;
+          clearDragClasses();
+        };
+
+        item.ondragover = e => {
+          e.preventDefault();
+          if (draggedId === p.id) return;
+          const rect = item.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          const pos = e.clientY < midY ? 'top' : 'bottom';
+
+          if (dragOverId !== p.id || dragOverPos !== pos) {
+            clearDragClasses();
+            document.querySelector(`[data-id="${draggedId}"]`)?.classList.add('dragging');
+            dragOverId = p.id;
+            dragOverPos = pos;
+            item.classList.add(pos === 'top' ? 'drag-over-top' : 'drag-over-bottom');
+          }
+        };
+
+        item.ondragleave = () => {
+          item.classList.remove('drag-over-top', 'drag-over-bottom');
+        };
+
+        item.ondrop = e => {
+          e.preventDefault();
+          if (draggedId && draggedId !== p.id) {
+            reorder(draggedId, p.id, dragOverPos);
+          }
+          clearDragClasses();
+        };
+
+        item.innerHTML = `
+          <div class="page-thumb">${p.pageNo}<span class="rot">${p.rotation}°</span></div>
+          <div class="page-info">
+            <div class="page-title">${i+1}番目（元:${p.pageNo}ページ）</div>
+            <div class="page-source">${p.source}</div>
+          </div>
+          <div class="page-actions">
+            <button class="icon-btn" title="左回転">↺</button>
+            <button class="icon-btn" title="右回転">↻</button>
+            <button class="icon-btn" title="削除">×</button>
+          </div>
+        `;
+        const btns = item.querySelectorAll(".icon-btn");
+        btns[0].onclick = e => { e.stopPropagation(); rotate(p.id, -90); };
+        btns[1].onclick = e => { e.stopPropagation(); rotate(p.id, 90); };
+        btns[2].onclick = e => { e.stopPropagation(); deletePage(p.id); };
+        list.appendChild(item);
+      });
+    }
+
+    function renderPreview() {
+      const idx = pages.findIndex(x => x.id === selectedId);
+      const p = pages[idx];
+      el("undoBtn").disabled = !lastAction;
+      if (!p) {
+        el("previewNum").textContent = "-";
+        el("selInfo").textContent = "-";
+        el("previewPage").style.transform = "";
+        return;
+      }
+      el("previewNum").textContent = p.pageNo;
+      el("selInfo").textContent = `${idx+1}番目 / ${pages.length}（元:${p.pageNo}ページ, ${p.source}）`;
+      el("previewPage").style.transform = `rotate(${p.rotation}deg)`;
+    }
+
+    function render() {
+      renderList();
+      renderPreview();
+    }
+
+    // Save
+    function save() {
+      if (!pages.length) { setBanner("bad", "ページがありません"); return; }
+      setTimeout(() => {
+        if (permissionError) {
+          setBanner("bad", "保存できません - フォルダを選択してください");
+          openModal();
+          return;
+        }
+        const now = new Date();
+        const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+        setBanner("ok", `保存しました: 提出用_${ts}.pdf`, true);
+      }, 500);
+    }
+
+    function openModal() {
+      const list = el("folderList");
+      list.innerHTML = "";
+      folders.forEach(f => {
+        const item = document.createElement("div");
+        item.className = "folder-item";
+        item.innerHTML = `<div class="folder-name">${f.name}</div><div class="folder-path">${f.path}</div>`;
+        item.onclick = () => { closeModal(); permissionError = false; save(); };
+        list.appendChild(item);
+      });
+      el("modalOverlay").style.display = "flex";
+    }
+    function closeModal() { el("modalOverlay").style.display = "none"; }
+
+    // Events
+    el("rotateLeftBtn").onclick = () => selectedId && rotate(selectedId, -90);
+    el("rotateRightBtn").onclick = () => selectedId && rotate(selectedId, 90);
+    el("deleteBtn").onclick = () => selectedId && deletePage(selectedId);
+    el("undoBtn").onclick = undo;
+    el("saveBtn").onclick = save;
+    el("resetBtn").onclick = () => {
+      pages = structuredClone(initialPages);
+      selectedId = pages[0]?.id ?? null;
+      lastAction = null;
+      render();
+      setBanner("warn", "リセットしました");
+    };
+    el("closeModalBtn").onclick = closeModal;
+    el("modalOverlay").onclick = e => { if (e.target === el("modalOverlay")) closeModal(); };
+
+    render();
+  </script>
+</body>
+</html>
