@@ -45,6 +45,7 @@ function getPageTitle(page: string): string {
     index: 'モック一覧',
     pdf_organizer: 'PDF整理ツール（Drive風モック）',
     pdf_organizer_split: 'PDF整理ツール（2カラム版）',
+    pdf_organizer_split_v2: 'PDF整理ツール（2カラム版・墨消し対応）',
     pdf_organizer_grid: 'PDF整理ツール（グリッド版）',
     drive_secure_sender: 'Googleドライブ期限付きリンク送信',
   };
@@ -68,6 +69,15 @@ function getMockList(): MockInfo[] {
   // 表示順: 検討中 → 確定 → 不要
   return [
     // === 検討中（レビュー待ち） ===
+    {
+      id: 'pdf_organizer_split_v2',
+      title: 'PDF整理ツール（2カラム・墨消し対応）',
+      description: '2カラム版に墨消し機能を追加。ドラッグで範囲選択して黒塗り',
+      icon: '■',
+      color: '#1a1a1a',
+      status: '検討中',
+      createdAt: '2025-12-27',
+    },
     {
       id: 'drive_secure_sender',
       title: 'Googleドライブ期限付きリンク送信',
