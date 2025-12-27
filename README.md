@@ -10,7 +10,7 @@ Google Workspaceのドメイン内で利用可能。
 ## 構成
 
 ```
-mock/
+gas-mock-viewer/
 ├── README.md           # このファイル
 ├── CLAUDE.md           # Claude Code用ガイド
 ├── gas/                # GASプロジェクト
@@ -30,6 +30,7 @@ https://script.google.com/macros/s/AKfycbxtgajv4vQRCdTXc0OdCcRHHOpS2z4gR8CfpsAu1
 
 | モック | 状態 | 説明 |
 |--------|------|------|
+| Googleドライブ期限付きリンク送信 | 検討中 | 案件フォルダからファイルを選択し、期限付き共有リンクをメール送信 |
 | PDF整理ツール（2カラム） | 検討中 | 左:ページ一覧、右:プレビュー |
 | PDF整理ツール（グリッド） | 検討中 | ページをグリッド表示 |
 | PDF整理ツール（Drive風） | 不要 | 参考用として残存 |
