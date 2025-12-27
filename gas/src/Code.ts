@@ -77,15 +77,6 @@ function getMockList(): MockInfo[] {
       status: '検討中',
       createdAt: '2025-12-25',
     },
-    {
-      id: 'pdf_organizer_grid',
-      title: 'PDF整理ツール（グリッド）',
-      description: 'ページをグリッド表示。全体を一覧できる',
-      icon: 'PDF',
-      color: '#d93025',
-      status: '検討中',
-      createdAt: '2025-12-20',
-    },
     // === 確定 ===
     {
       id: 'pdf_organizer_split',
@@ -97,6 +88,15 @@ function getMockList(): MockInfo[] {
       createdAt: '2025-12-20',
     },
     // === 不要（参考用に残存） ===
+    {
+      id: 'pdf_organizer_grid',
+      title: 'PDF整理ツール（グリッド）',
+      description: 'ページをグリッド表示。全体を一覧できる',
+      icon: 'OLD',
+      color: '#656d76',
+      status: '不要',
+      createdAt: '2025-12-20',
+    },
     {
       id: 'pdf_organizer',
       title: 'PDF整理ツール（Drive風）',
