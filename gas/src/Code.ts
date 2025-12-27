@@ -46,6 +46,7 @@ function getPageTitle(page: string): string {
     pdf_organizer: 'PDF整理ツール（Drive風モック）',
     pdf_organizer_split: 'PDF整理ツール（2カラム版）',
     pdf_organizer_grid: 'PDF整理ツール（グリッド版）',
+    drive_secure_sender: 'Googleドライブ期限付きリンク送信',
   };
   return titles[page] || 'モック';
 }
@@ -67,6 +68,15 @@ function getMockList(): MockInfo[] {
   // 表示順: 検討中 → 確定 → 不要
   return [
     // === 検討中（レビュー待ち） ===
+    {
+      id: 'drive_secure_sender',
+      title: 'Googleドライブ期限付きリンク送信',
+      description: '案件フォルダからファイルを選択し、期限付き共有リンクをメール送信',
+      icon: '📤',
+      color: '#0969da',
+      status: '検討中',
+      createdAt: '2025-12-25',
+    },
     {
       id: 'pdf_organizer_split',
       title: 'PDF整理ツール（2カラム）',

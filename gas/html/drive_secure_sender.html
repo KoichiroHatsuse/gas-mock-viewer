@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Googleドライブ期限付きリンク送信</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --line: #e1e4e8;
+      --text: #24292f;
+      --muted: #656d76;
+      --blue: #0969da;
+      --blue-light: #ddf4ff;
+      --red: #cf222e;
+      --green: #1a7f37;
+      --green-light: #dafbe1;
+      --yellow: #9a6700;
+      --yellow-light: #fff8c5;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .header-icon {
+      font-size: 20px;
+    }
+    .back-link {
+      color: var(--blue);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Banner */
+    .banner {
+      display: none;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .banner.show { display: block; }
+    .banner.ok { background: var(--green-light); color: var(--green); }
+    .banner.warn { background: var(--yellow-light); color: var(--yellow); }
+    .banner.bad { background: #ffebe9; color: var(--red); }
+
+    /* Main Layout */
+    .main {
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Case Info Header */
+    .case-header {
+      background: var(--blue-light);
+      border: 1px solid var(--blue);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .case-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .case-email {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Two Column Layout with Resizable */
+    .two-column {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      min-height: 400px;
+    }
+    .left-panel {
+      width: 320px;
+      min-width: 250px;
+      max-width: 500px;
+      flex-shrink: 0;
+    }
+    .resize-handle {
+      width: 8px;
+      background: var(--line);
+      cursor: col-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .resize-handle:hover {
+      background: var(--blue);
+    }
+    .resize-handle::after {
+      content: '⋮';
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .resize-handle:hover::after {
+      color: white;
+    }
+    .right-panel {
+      flex: 1;
+      min-width: 300px;
+    }
+    @media (max-width: 800px) {
+      .two-column {
+        flex-direction: column;
+      }
+      .left-panel {
+        width: 100%;
+        max-width: none;
+      }
+      .resize-handle {
+        display: none;
+      }
+    }
+
+    /* Panel */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-body {
+      padding: 12px;
+      flex: 1;
+      overflow: auto;
+    }
+
+    /* Folder Tree */
+    .folder-tree {
+      font-size: 14px;
+    }
+    .tree-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tree-item:hover {
+      background: var(--bg);
+    }
+    .tree-folder {
+      font-weight: 500;
+    }
+    .tree-folder-icon {
+      margin-right: 8px;
+      transition: transform 0.2s;
+    }
+    .tree-folder-icon.collapsed {
+      transform: rotate(-90deg);
+    }
+    .tree-children {
+      margin-left: 20px;
+    }
+    .tree-children.collapsed {
+      display: none;
+    }
+    .tree-file {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tree-file:hover {
+      background: var(--bg);
+    }
+    .tree-file.selected {
+      background: var(--blue-light);
+    }
+    .tree-file input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue);
+    }
+    .tree-file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Preview Tabs */
+    .preview-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
+      min-height: 44px;
+    }
+    .preview-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      max-width: 150px;
+    }
+    .preview-tab:hover {
+      border-color: var(--blue);
+    }
+    .preview-tab.active {
+      background: var(--blue-light);
+      border-color: var(--blue);
+    }
+    .preview-tab-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preview-tab-close {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1;
+    }
+    .preview-tab-close:hover {
+      color: var(--red);
+    }
+    .preview-empty {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 8px 0;
+    }
+
+    /* Preview Area */
+    .preview-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      color: var(--muted);
+      font-size: 14px;
+      margin: 12px;
+      flex: 1;
+    }
+    .preview-content {
+      text-align: center;
+    }
+    .preview-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* Send Form */
+    .send-form {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+    .form-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font-size: 14px;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-light);
+    }
+    .form-input:disabled {
+      background: var(--bg);
+      color: var(--muted);
+    }
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .form-static {
+      padding: 8px 0;
+      font-size: 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+    }
+    .btn:hover { background: var(--bg); }
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+      border-color: var(--blue);
+    }
+    .btn-primary:hover { background: #0860ca; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .modal-body {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Preview Image */
+    .preview-image {
+      max-width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      cursor: zoom-in;
+      border-radius: var(--radius);
+      transition: transform 0.2s;
+    }
+    .preview-image:hover {
+      transform: scale(1.02);
+    }
+
+    /* Image Zoom Modal */
+    .image-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 300;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 40px 20px;
+    }
+    .image-modal-overlay.show { display: flex; }
+    .image-modal-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+      padding-bottom: 40px;
+    }
+    .image-modal-page {
+      max-width: 90vw;
+      background: white;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .image-modal-page-number {
+      color: white;
+      font-size: 14px;
+      margin-top: 8px;
+      opacity: 0.7;
+    }
+    .image-modal-close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 32px;
+      cursor: pointer;
+      z-index: 301;
+      background: rgba(0,0,0,0.5);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-modal-close:hover {
+      background: rgba(0,0,0,0.8);
+    }
+    .image-modal-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 14px;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 16px;
+      border-radius: 20px;
+      z-index: 301;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-icon">📤</span>
+      <h1>書類送信システム</h1>
+    </div>
+    <a id="backLink" href="#" target="_top" class="back-link">一覧に戻る</a>
+  </header>
+
+  <!-- Banner -->
+  <div id="banner" class="banner"></div>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Case Header (Fixed - No Search) -->
+    <div class="case-header">
+      <div class="case-title">
+        <span>📁</span>
+        <span>案件: <span id="caseNumber">A-12345</span> - <span id="bankName">きらぼし銀行</span></span>
+      </div>
+      <div class="case-email">送信先: <span id="recipientEmail">loan@kiraboshibank.co.jp</span>（<span id="recipientName">融資担当者</span>）</div>
+    </div>
+
+    <!-- Two Column: Folder Tree + Preview -->
+    <div class="two-column">
+      <!-- Left Panel: Folder Tree -->
+      <div class="left-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <span>ファイル選択</span>
+            <span id="fileCount" style="color: var(--muted); font-weight: normal;">0/10</span>
+          </div>
+          <div class="panel-body">
+            <div id="folderTree" class="folder-tree"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resize Handle -->
+      <div class="resize-handle" id="resizeHandle"></div>
+
+      <!-- Right Panel: Preview with Tabs -->
+      <div class="right-panel">
+        <div class="panel">
+          <div class="panel-header">プレビュー</div>
+          <div id="previewTabs" class="preview-tabs">
+            <span class="preview-empty">ファイルを選択してください</span>
+          </div>
+          <div id="previewArea" class="preview-area">
+            <div class="preview-content">
+              <div class="preview-icon">📄</div>
+              <div>ファイルを選択するとプレビューが表示されます</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Form -->
+    <div class="send-form">
+      <div class="form-group">
+        <label class="form-label">共有期限</label>
+        <div class="form-static" id="expirationDate">7日後（計算中...）</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">件名</label>
+        <input type="text" id="emailSubject" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">本文</label>
+        <textarea id="emailBody" class="form-input form-textarea"></textarea>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button id="cancelBtn" class="btn">キャンセル</button>
+      <button id="sendBtn" class="btn btn-primary" disabled>送信</button>
+    </div>
+  </main>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-title">送信確認</div>
+      <div class="modal-body" id="confirmBody">
+        選択したファイルを送信します。よろしいですか？
+      </div>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn">キャンセル</button>
+        <button id="confirmOk" class="btn btn-primary">送信する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Zoom Modal (PDF with multiple pages) -->
+  <div id="imageModal" class="image-modal-overlay">
+    <span id="imageModalClose" class="image-modal-close">×</span>
+    <div id="imageModalContainer" class="image-modal-container">
+      <!-- Pages will be inserted here -->
+    </div>
+    <div class="image-modal-hint">↕ スクロールで他のページを表示</div>
+  </div>
+
+  <script>
+    // ========================================
+    // Mock Data
+    // ========================================
+    const MOCK_CASE = {
+      caseNumber: 'A-12345',
+      bankName: 'きらぼし銀行',
+      recipientEmail: 'loan@kiraboshibank.co.jp',
+      recipientName: '融資担当者',
+    };
+
+    const MOCK_FOLDER_TREE = {
+      name: 'A-12345',
+      type: 'folder',
+      expanded: true,
+      children: [
+        {
+          name: '申込書類',
+          type: 'folder',
+          expanded: true,
+          children: [
+            { id: '1', name: '契約書.pdf', type: 'file' },
+            { id: '2', name: '本人確認書類.pdf', type: 'file' },
+            { id: '3', name: '委任状.pdf', type: 'file' },
+          ],
+        },
+        {
+          name: '審査書類',
+          type: 'folder',
+          expanded: false,
+          children: [
+            { id: '4', name: '収入証明書.pdf', type: 'file' },
+            { id: '5', name: '物件資料.pdf', type: 'file' },
+            { id: '6', name: '登記簿謄本.pdf', type: 'file' },
+          ],
+        },
+        {
+          name: '契約関連',
+          type: 'folder',
+          expanded: false,
+          children: [
+            { id: '7', name: '重要事項説明書.pdf', type: 'file' },
+            { id: '8', name: '売買契約書.pdf', type: 'file' },
+          ],
+        },
+        { id: '9', name: '案件サマリー.xlsx', type: 'file' },
+        { id: '10', name: 'メモ.txt', type: 'file' },
+      ],
+    };
+
+    const EMAIL_TEMPLATE = `{recipientName} 様
+
+お世話になっております。
+株式会社いえーるの担当者です。
+
+書類を送付いたしますので、以下のリンクよりご確認ください。
+
+【送信フォルダ】
+送信_{date}_{bankName}
+{fileList}
+
+【ダウンロードリンク】
+{googleDriveLink}
+
+※リンクの有効期限: {expirationDate}
+※期限を過ぎるとアクセスできなくなります
+
+ご不明な点がございましたらお問い合わせください。
+
+---
+株式会社いえーる
+ダンドリ推進部`;
+
+    // ========================================
+    // Sample Image (Base64)
+    // ========================================
+    const SAMPLE_IMAGE_BASE64 = 'https://www.npa.go.jp/policies/application/license_renewal/img/license.jpg';
+
+    // ========================================
+    // State
+    // ========================================
+    let selectedFileIds = new Set();
+    let activePreviewId = null;
+    let allFiles = [];
+
+    // Collect all files from tree
+    function collectFiles(node) {
+      if (node.type === 'file') {
+        allFiles.push(node);
+      }
+      if (node.children) {
+        node.children.forEach(child => collectFiles(child));
+      }
+    }
+    collectFiles(MOCK_FOLDER_TREE);
+
+    // ========================================
+    // DOM Elements
+    // ========================================
+    const $ = (id) => document.getElementById(id);
+    const folderTree = $('folderTree');
+    const fileCount = $('fileCount');
+    const previewTabs = $('previewTabs');
+    const previewArea = $('previewArea');
+    const expirationDateEl = $('expirationDate');
+    const emailSubject = $('emailSubject');
+    const emailBody = $('emailBody');
+    const cancelBtn = $('cancelBtn');
+    const sendBtn = $('sendBtn');
+    const banner = $('banner');
+    const confirmModal = $('confirmModal');
+    const confirmBody = $('confirmBody');
+    const confirmCancel = $('confirmCancel');
+    const confirmOk = $('confirmOk');
+    const resizeHandle = $('resizeHandle');
+    const leftPanel = document.querySelector('.left-panel');
+
+    // ========================================
+    // Functions
+    // ========================================
+    function showBanner(message, type) {
+      banner.textContent = message;
+      banner.className = 'banner show ' + type;
+      setTimeout(() => {
+        banner.classList.remove('show');
+      }, 4000);
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getExpirationDate() {
+      const date = new Date();
+      date.setDate(date.getDate() + 7);
+      return date;
+    }
+
+    function renderFolderTree() {
+      folderTree.innerHTML = renderNode(MOCK_FOLDER_TREE, 0);
+      attachTreeListeners();
+    }
+
+    function renderNode(node, depth) {
+      if (node.type === 'folder') {
+        const isExpanded = node.expanded;
+        return `
+          <div class="tree-item tree-folder" data-name="${node.name}" style="padding-left: ${depth * 12}px">
+            <span class="tree-folder-icon ${isExpanded ? '' : 'collapsed'}">▼</span>
+            <span>📁 ${node.name}</span>
+          </div>
+          <div class="tree-children ${isExpanded ? '' : 'collapsed'}" data-folder="${node.name}">
+            ${node.children ? node.children.map(child => renderNode(child, depth + 1)).join('') : ''}
+          </div>
+        `;
+      } else {
+        const isSelected = selectedFileIds.has(node.id);
+        const icon = node.name.endsWith('.pdf') ? '📄' : node.name.endsWith('.xlsx') ? '📊' : '📝';
+        return `
+          <div class="tree-file ${isSelected ? 'selected' : ''}" data-id="${node.id}" style="padding-left: ${depth * 12 + 8}px">
+            <input type="checkbox" ${isSelected ? 'checked' : ''}>
+            <span>${icon}</span>
+            <span class="tree-file-name">${node.name}</span>
+          </div>
+        `;
+      }
+    }
+
+    function attachTreeListeners() {
+      // Folder toggle
+      folderTree.querySelectorAll('.tree-folder').forEach(folder => {
+        folder.addEventListener('click', () => {
+          const name = folder.dataset.name;
+          const children = folderTree.querySelector(`.tree-children[data-folder="${name}"]`);
+          const icon = folder.querySelector('.tree-folder-icon');
+          if (children) {
+            children.classList.toggle('collapsed');
+            icon.classList.toggle('collapsed');
+          }
+        });
+      });
+
+      // File toggle
+      folderTree.querySelectorAll('.tree-file').forEach(file => {
+        file.addEventListener('click', (e) => {
+          const id = file.dataset.id;
+          toggleFile(id);
+        });
+      });
+    }
+
+    function toggleFile(id) {
+      if (selectedFileIds.has(id)) {
+        selectedFileIds.delete(id);
+        if (activePreviewId === id) {
+          const remaining = Array.from(selectedFileIds);
+          activePreviewId = remaining.length > 0 ? remaining[remaining.length - 1] : null;
+        }
+      } else {
+        if (selectedFileIds.size >= 10) {
+          showBanner('最大10件までしか選択できません', 'warn');
+          return;
+        }
+        selectedFileIds.add(id);
+        activePreviewId = id;
+      }
+      updateUI();
+    }
+
+    function updateUI() {
+      renderFolderTree();
+      updateFileCount();
+      updatePreviewTabs();
+      updatePreview();
+      updateEmailBody();
+      updateSendButton();
+    }
+
+    function updateFileCount() {
+      const count = selectedFileIds.size;
+      fileCount.textContent = `${count}/10`;
+      fileCount.style.color = count > 0 ? 'var(--blue)' : 'var(--muted)';
+    }
+
+    function updatePreviewTabs() {
+      if (selectedFileIds.size === 0) {
+        previewTabs.innerHTML = '<span class="preview-empty">ファイルを選択してください</span>';
+        return;
+      }
+
+      const selectedFiles = allFiles.filter(f => selectedFileIds.has(f.id));
+      previewTabs.innerHTML = selectedFiles.map(file => `
+        <div class="preview-tab ${activePreviewId === file.id ? 'active' : ''}" data-id="${file.id}">
+          <span class="preview-tab-name">${file.name}</span>
+          <span class="preview-tab-close" data-id="${file.id}">×</span>
+        </div>
+      `).join('');
+
+      // Tab click handlers
+      previewTabs.querySelectorAll('.preview-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          if (e.target.classList.contains('preview-tab-close')) {
+            const id = e.target.dataset.id;
+            toggleFile(id);
+          } else {
+            activePreviewId = tab.dataset.id;
+            updatePreviewTabs();
+            updatePreview();
+          }
+        });
+      });
+    }
+
+    function updatePreview() {
+      if (!activePreviewId) {
+        previewArea.innerHTML = `
+          <div class="preview-content">
+            <div class="preview-icon">📄</div>
+            <div>ファイルを選択するとプレビューが表示されます</div>
+          </div>
+        `;
+        return;
+      }
+
+      const file = allFiles.find(f => f.id === activePreviewId);
+      if (!file) return;
+
+      // PDFファイルはサンプル画像を表示（クリックで拡大）
+      if (file.name.endsWith('.pdf')) {
+        previewArea.innerHTML = `
+          <div class="preview-content">
+            <div style="font-weight: 500; margin-bottom: 12px;">${file.name}</div>
+            <img src="${SAMPLE_IMAGE_BASE64}" alt="${file.name}" class="preview-image" onclick="openImageModal(this.src, '${file.name}')">
+            <div style="color: var(--muted); margin-top: 8px; font-size: 12px;">クリックで拡大（複数ページ対応）</div>
+          </div>
+        `;
+      } else {
+        const icon = file.name.endsWith('.xlsx') ? '📊' : '📝';
+        previewArea.innerHTML = `
+          <div class="preview-content">
+            <div class="preview-icon">${icon}</div>
+            <div style="font-weight: 500; margin-bottom: 8px;">${file.name}</div>
+            <div style="color: var(--muted);">（このファイル形式はプレビュー非対応です）</div>
+          </div>
+        `;
+      }
+    }
+
+    function openImageModal(src, fileName) {
+      const imageModal = document.getElementById('imageModal');
+      const imageModalContainer = document.getElementById('imageModalContainer');
+
+      // モック用: PDFの複数ページを表現（同じ画像を3ページ分表示）
+      const pageCount = 3;
+      let pagesHtml = '';
+      for (let i = 1; i <= pageCount; i++) {
+        pagesHtml += `
+          <div style="text-align: center;">
+            <img src="${src}" alt="${fileName} - ページ ${i}" class="image-modal-page">
+            <div class="image-modal-page-number">${fileName} - ${i} / ${pageCount} ページ</div>
+          </div>
+        `;
+      }
+      imageModalContainer.innerHTML = pagesHtml;
+      imageModal.classList.add('show');
+      // モーダルを開いたら一番上にスクロール
+      imageModal.scrollTop = 0;
+    }
+
+    function closeImageModal() {
+      const imageModal = document.getElementById('imageModal');
+      imageModal.classList.remove('show');
+    }
+
+    function updateEmailBody() {
+      const selectedFiles = allFiles.filter(f => selectedFileIds.has(f.id));
+      const fileListText = selectedFiles.length > 0
+        ? selectedFiles.map(f => `・${f.name}`).join('\n')
+        : '（ファイル未選択）';
+
+      const expDate = getExpirationDate();
+      const today = new Date();
+      // モック用のGoogleドライブリンク
+      const mockDriveLink = `https://drive.google.com/drive/folders/XXXXXXX_送信_${formatDate(today)}_${MOCK_CASE.bankName}`;
+
+      const body = EMAIL_TEMPLATE
+        .replace('{recipientName}', MOCK_CASE.recipientName)
+        .replace('{date}', formatDate(today))
+        .replace('{bankName}', MOCK_CASE.bankName)
+        .replace('{fileList}', fileListText)
+        .replace('{googleDriveLink}', mockDriveLink)
+        .replace('{expirationDate}', formatDate(expDate));
+
+      emailBody.value = body;
+    }
+
+    function updateSendButton() {
+      sendBtn.disabled = selectedFileIds.size === 0;
+    }
+
+    function showConfirmModal() {
+      const selectedFiles = allFiles.filter(f => selectedFileIds.has(f.id));
+      const today = new Date();
+      confirmBody.innerHTML = `
+        <div style="margin-bottom: 12px;">以下の内容で送信します：</div>
+        <div style="background: var(--bg); padding: 12px; border-radius: var(--radius); margin-bottom: 12px;">
+          <div style="font-weight: 500; margin-bottom: 8px;">📁 送信フォルダ: 送信_${formatDate(today)}_${MOCK_CASE.bankName}</div>
+          <div style="font-size: 13px; color: var(--muted);">
+            ${selectedFiles.map(f => `<div>・${f.name}</div>`).join('')}
+          </div>
+        </div>
+        <div>送信先: ${MOCK_CASE.recipientEmail}</div>
+      `;
+      confirmModal.classList.add('show');
+    }
+
+    function hideConfirmModal() {
+      confirmModal.classList.remove('show');
+    }
+
+    function sendFiles() {
+      hideConfirmModal();
+      showBanner('送信処理中...', 'warn');
+
+      setTimeout(() => {
+        const today = new Date();
+        showBanner(`送信完了: 送信_${formatDate(today)}_${MOCK_CASE.bankName}`, 'ok');
+        selectedFileIds.clear();
+        activePreviewId = null;
+        updateUI();
+      }, 1500);
+    }
+
+    function resetForm() {
+      selectedFileIds.clear();
+      activePreviewId = null;
+      updateUI();
+      showBanner('選択をリセットしました', 'ok');
+    }
+
+    // ========================================
+    // Resize Handle
+    // ========================================
+    let isResizing = false;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const containerRect = document.querySelector('.two-column').getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      if (newWidth >= 250 && newWidth <= 500) {
+        leftPanel.style.width = newWidth + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // ========================================
+    // Event Listeners
+    // ========================================
+    cancelBtn.addEventListener('click', resetForm);
+    sendBtn.addEventListener('click', showConfirmModal);
+    confirmCancel.addEventListener('click', hideConfirmModal);
+    confirmOk.addEventListener('click', sendFiles);
+    confirmModal.addEventListener('click', (e) => {
+      if (e.target === confirmModal) hideConfirmModal();
+    });
+
+    // Image modal events
+    document.getElementById('imageModalClose').addEventListener('click', closeImageModal);
+    document.getElementById('imageModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('imageModal')) closeImageModal();
+    });
+
+    // ========================================
+    // Initialize
+    // ========================================
+    google.script.run
+      .withSuccessHandler(function(url) {
+        document.getElementById('backLink').href = url + '?page=index';
+      })
+      .getWebAppUrl();
+
+    // Set initial values
+    const expDate = getExpirationDate();
+    expirationDateEl.textContent = `7日後（${formatDate(expDate)}）`;
+    emailSubject.value = `書類送付のご連絡 - ${MOCK_CASE.caseNumber}`;
+
+    // Render initial UI
+    renderFolderTree();
+    updateEmailBody();
+  </script>
+</body>
+</html>
