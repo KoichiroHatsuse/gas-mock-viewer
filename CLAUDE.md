@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 質問する時は常にAskUserQuestionを使って回答させる
 - **選択肢にはそれぞれ、推奨度と理由を提示する**
   - 推奨度は⭐の5段階評価
+- **日付を記載する際は、必ずシステム情報の`Today's date`を確認してから記載する**
+  - 内部で保持している日付が古い可能性があるため
 
 ## プロジェクト概要
 
@@ -92,3 +94,30 @@ google.script.run.withSuccessHandler(url => {
 - ランタイム: V8 JavaScriptエンジン
 - 実行者: デプロイしたユーザーとして実行
 - クライアント→サーバー通信: `google.script.run` を使用
+
+## 開発方針
+
+### モック → 本番の流れ
+
+1. **モック段階（現在）**: 単一HTMLファイルで高速にUI検討
+   - フレームワーク不使用（素のHTML/CSS/JS）
+   - GAS WebAppでホスト
+   - 目的: 機能要件・UI方向性の合意
+
+2. **本番段階（将来）**: React + shadcn/ui で実装
+   - GASはAPIバックエンドのみ
+   - フロントは別ホスト（Vercel等）
+   - モックを参考に本番品質で再実装
+
+### 技術スタック
+
+| フェーズ | フロントエンド | バックエンド |
+|---------|---------------|-------------|
+| モック | HTML, CSS, Vanilla JS | GAS (TypeScript) |
+| 本番 | React, TypeScript, shadcn/ui, Tailwind CSS | GAS API or 別基盤 |
+
+### この方針の理由
+
+- モック段階では要件変更への柔軟性を優先
+- HTMLモックは十分な品質で合意形成に有効
+- shadcn/ui は本番で導入すれば「良くなる」ので、モック段階では不要
