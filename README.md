@@ -30,6 +30,7 @@ https://script.google.com/macros/s/AKfycbxtgajv4vQRCdTXc0OdCcRHHOpS2z4gR8CfpsAu1
 
 | モック | 状態 | 説明 |
 |--------|------|------|
+| オペレーター説明AIチェック機構 | 検討中 | チャット送信前にAIで不適切表現をチェック。言い換え案を提示 |
 | PDF整理ツール（2カラム・墨消し対応） | 検討中 | 2カラム版に墨消し機能を追加。ドラッグで範囲選択して黒塗り |
 | Googleドライブ期限付きリンク送信 | 検討中 | 案件フォルダからファイルを選択し、期限付き共有リンクをメール送信 |
 | PDF整理ツール（2カラム） | 確定 | 左:ページ一覧、右:プレビュー |
@@ -59,3 +60,12 @@ npm run deploy:new
 - Google Apps Script
 - TypeScript
 - Clasp (CLI for Apps Script)
+- Gemini API（AIチェック機構用）
+
+## Gemini APIキーの設定
+
+AIチェック機構モックを動作させるには、Gemini APIキーの設定が必要です。
+
+1. [Google AI Studio](https://aistudio.google.com/) でAPIキーを取得
+2. GASエディタを開く: `npm run open`
+3. プロジェクト設定 → スクリプトプロパティ → `GEMINI_API_KEY` を追加

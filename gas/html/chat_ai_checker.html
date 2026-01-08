@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIチェック機構モック</title>
+  <style>
+    :root {
+      --primary: #1a7cc4;
+      --primary-dark: #155d94;
+      --bg: #f5f6f8;
+      --sidebar-bg: #ffffff;
+      --chat-bg: #f0f2f5;
+      --white: #ffffff;
+      --text: #333333;
+      --text-muted: #666666;
+      --border: #e0e0e0;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --success: #28a745;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== ヘッダー ===== */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .header-logo {
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+    .header-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: auto;
+    }
+
+    /* ===== メインレイアウト ===== */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ===== サイドバー ===== */
+    .sidebar {
+      width: 320px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-search {
+      display: flex;
+      gap: 8px;
+    }
+    .sidebar-search input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .sidebar-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: bold;
+    }
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .chat-item {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      gap: 10px;
+    }
+    .chat-item:hover {
+      background: #f5f7fa;
+    }
+    .chat-item.active {
+      background: #e8f4fc;
+    }
+    .chat-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .chat-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .chat-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-preview {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .chat-badge {
+      background: var(--danger);
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    /* ===== チャットエリア ===== */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--chat-bg);
+    }
+    .chat-header {
+      background: var(--white);
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-header-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .chat-header-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ===== メッセージエリア ===== */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .message {
+      display: flex;
+      gap: 10px;
+      max-width: 70%;
+    }
+    .message.customer {
+      align-self: flex-start;
+    }
+    .message.operator {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .message.operator .message-avatar {
+      background: var(--primary);
+      color: white;
+    }
+    .message-content {
+      background: var(--white);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .message.operator .message-content {
+      background: #dcf8c6;
+    }
+    .message-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ===== 入力エリア ===== */
+    .input-area {
+      background: var(--white);
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .input-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .input-box {
+      flex: 1;
+      position: relative;
+    }
+    .input-box textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      resize: none;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+    .input-box textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .send-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .send-btn:hover {
+      background: var(--primary-dark);
+    }
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* ===== テスト入力ボタン ===== */
+    .test-inputs {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+    .test-inputs-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .test-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .test-btn {
+      background: #f0f0f0;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .test-btn:hover {
+      background: #e0e0e0;
+    }
+    .test-btn.high { border-color: var(--danger); color: var(--danger); }
+    .test-btn.medium { border-color: #e67700; color: #e67700; }
+    .test-btn.low { border-color: var(--success); color: var(--success); }
+
+    /* ===== AIチェックポップアップ ===== */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .popup-overlay.show {
+      display: flex;
+    }
+    .popup {
+      background: var(--white);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .popup-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .popup-header.high { background: #fde8e8; }
+    .popup-header.medium { background: #fff3cd; }
+    .popup-header.low { background: #d4edda; }
+    .popup-icon {
+      font-size: 24px;
+    }
+    .popup-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .popup-body {
+      padding: 20px;
+    }
+    .popup-section {
+      margin-bottom: 16px;
+    }
+    .popup-section:last-child {
+      margin-bottom: 0;
+    }
+    .popup-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .popup-warning {
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .popup-categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .popup-category {
+      background: #e9ecef;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .popup-expressions {
+      background: #fff3cd;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .popup-expressions mark {
+      background: #ffeb3b;
+      padding: 0 2px;
+    }
+    .alternatives-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .alternative-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .alternative-text {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .alternative-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .alternative-btn:hover {
+      background: var(--primary-dark);
+    }
+    .popup-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .popup-btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .popup-btn.secondary {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .popup-btn.secondary:hover {
+      background: #f5f5f5;
+    }
+    .popup-btn.primary {
+      background: var(--danger);
+      border: none;
+      color: white;
+    }
+    .popup-btn.primary:hover {
+      background: #c82333;
+    }
+
+    /* ===== ローディング ===== */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+    .loading-overlay.show {
+      display: flex;
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* ===== ホームボタン ===== */
+    .home-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 100;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .home-btn:hover {
+      background: #f5f5f5;
+    }
+
+    /* ===== エラーメッセージ ===== */
+    .error-toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--danger);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      z-index: 1001;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .error-toast.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 3L4 9v12h16V9l-8-6zm0 2.5L18 10v9H6v-9l6-4.5z"/>
+        <path d="M12 14a2 2 0 100-4 2 2 0 000 4z"/>
+      </svg>
+      ダンドリ
+    </div>
+    <span class="header-badge">AIチェック機構 モック</span>
+  </header>
+
+  <!-- メインレイアウト -->
+  <div class="main">
+    <!-- サイドバー -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-search">
+          <input type="text" placeholder="チャットルームを検索する">
+        </div>
+      </div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active">すべて</div>
+        <div class="sidebar-tab">未返信</div>
+      </div>
+      <div class="chat-list" id="chatList"></div>
+    </aside>
+
+    <!-- チャットエリア -->
+    <main class="chat-area">
+      <div class="chat-header">
+        <div>
+          <div class="chat-header-title" id="chatTitle">山田太郎 様</div>
+          <div class="chat-header-sub">住宅・不動産会社本店1-1-1</div>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-box">
+            <textarea id="messageInput" rows="3" placeholder="メッセージを入力..."></textarea>
+          </div>
+          <button class="send-btn" id="sendBtn">送信</button>
+        </div>
+        <div class="test-inputs">
+          <div class="test-inputs-label">テスト用入力例（クリックで挿入）</div>
+          <div class="test-buttons" id="testButtons"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- AIチェックポップアップ -->
+  <div class="popup-overlay" id="popupOverlay">
+    <div class="popup">
+      <div class="popup-header" id="popupHeader">
+        <span class="popup-icon" id="popupIcon">⚠️</span>
+        <span class="popup-title" id="popupTitle">リスクを検知しました</span>
+      </div>
+      <div class="popup-body">
+        <div class="popup-section">
+          <div class="popup-label">注意喚起</div>
+          <div class="popup-warning" id="popupWarning"></div>
+        </div>
+        <div class="popup-section">
+          <div class="popup-label">検知カテゴリ</div>
+          <div class="popup-categories" id="popupCategories"></div>
+        </div>
+        <div class="popup-section">
+          <div class="popup-label">問題のある表現</div>
+          <div class="popup-expressions" id="popupExpressions"></div>
+        </div>
+        <div class="popup-section">
+          <div class="popup-label">推奨される言い換え</div>
+          <div class="alternatives-list" id="alternativesList"></div>
+        </div>
+      </div>
+      <div class="popup-footer">
+        <button class="popup-btn secondary" id="editBtn">修正する</button>
+        <button class="popup-btn primary" id="sendAnywayBtn">このまま送信</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ローディング -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div style="text-align: center;">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">AIチェック中...</div>
+    </div>
+  </div>
+
+  <!-- エラートースト -->
+  <div class="error-toast" id="errorToast"></div>
+
+  <!-- ホームボタン -->
+  <a class="home-btn" id="homeBtn">← モック一覧に戻る</a>
+
+  <script>
+    // ===== データ =====
+    const chatRooms = [
+      { id: 1, name: '山田太郎 081301', company: '住宅・不動産会社本店1-1-1', unread: 0 },
+      { id: 2, name: '田中テスト2', company: '住宅・不動産会社本店1-1-1', unread: 0 },
+      { id: 3, name: 'スケジュール変更テスト', company: '住宅・不動産会社本店1-1-1', unread: 1 },
+      { id: 4, name: '田中コグニテスト', company: '住宅・不動産会社本店1-1-1', unread: 1 },
+      { id: 5, name: '受け入れ前テスト2', company: '住宅・不動産会社本店1-1-1', unread: 0 },
+    ];
+
+    const sampleMessages = [
+      { type: 'customer', text: 'お世話になっております。住宅ローンの審査について質問があります。', time: '1月5日 10:30' },
+      { type: 'operator', text: 'お問い合わせありがとうございます。どのようなご質問でしょうか？', time: '1月5日 10:32' },
+      { type: 'customer', text: '私は45歳で単身なのですが、審査に影響はありますか？', time: '1月5日 10:35' },
+    ];
+
+    const testInputs = [
+      { text: '男性の単身者は審査が通りにくいです', risk: 'high' },
+      { text: 'この銀行は厳しすぎるので、他を検討しましょう', risk: 'medium' },
+      { text: '絶対に審査は通りません', risk: 'high' },
+      { text: '投資用だと思われるとNGです', risk: 'medium' },
+      { text: '一番いい金利が出ると思います', risk: 'medium' },
+      { text: '審査では居住実態を確認されます', risk: 'low' },
+    ];
+
+    // ===== 状態 =====
+    let messages = [...sampleMessages];
+    let currentCheckResult = null;
+    let pendingMessage = '';
+
+    // ===== DOM要素 =====
+    const chatListEl = document.getElementById('chatList');
+    const messagesEl = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const testButtonsEl = document.getElementById('testButtons');
+    const popupOverlay = document.getElementById('popupOverlay');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const errorToast = document.getElementById('errorToast');
+    const homeBtn = document.getElementById('homeBtn');
+
+    // ===== 初期化 =====
+    function init() {
+      renderChatList();
+      renderMessages();
+      renderTestButtons();
+      setupEventListeners();
+      setupHomeButton();
+    }
+
+    function setupHomeButton() {
+      google.script.run
+        .withSuccessHandler(function(url) {
+          homeBtn.href = url;
+          homeBtn.target = '_top';
+        })
+        .getWebAppUrl();
+    }
+
+    function renderChatList() {
+      chatListEl.innerHTML = chatRooms.map((room, i) => `
+        <div class="chat-item ${i === 0 ? 'active' : ''}" data-id="${room.id}">
+          <div class="chat-avatar">${room.name.charAt(0)}</div>
+          <div class="chat-info">
+            <div class="chat-name">${room.name}</div>
+            <div class="chat-preview">${room.company}</div>
+          </div>
+          ${room.unread > 0 ? `<span class="chat-badge">${room.unread}</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderMessages() {
+      messagesEl.innerHTML = messages.map(msg => `
+        <div class="message ${msg.type}">
+          <div class="message-avatar">${msg.type === 'operator' ? 'OP' : '客'}</div>
+          <div>
+            <div class="message-content">${escapeHtml(msg.text)}</div>
+            <div class="message-time">${msg.time}</div>
+          </div>
+        </div>
+      `).join('');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function renderTestButtons() {
+      testButtonsEl.innerHTML = testInputs.map(input => `
+        <button class="test-btn ${input.risk}" data-text="${escapeHtml(input.text)}">
+          ${input.text.substring(0, 20)}...
+        </button>
+      `).join('');
+    }
+
+    function setupEventListeners() {
+      // 送信ボタン
+      sendBtn.addEventListener('click', handleSend);
+
+      // Enterキーで送信（Shift+Enterは改行）
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSend();
+        }
+      });
+
+      // テストボタン
+      testButtonsEl.addEventListener('click', (e) => {
+        if (e.target.classList.contains('test-btn')) {
+          messageInput.value = e.target.dataset.text;
+          messageInput.focus();
+        }
+      });
+
+      // ポップアップ: 修正する
+      document.getElementById('editBtn').addEventListener('click', () => {
+        hidePopup();
+        messageInput.focus();
+      });
+
+      // ポップアップ: このまま送信
+      document.getElementById('sendAnywayBtn').addEventListener('click', () => {
+        hidePopup();
+        addMessage(pendingMessage);
+      });
+    }
+
+    // ===== 送信処理 =====
+    async function handleSend() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      pendingMessage = text;
+      showLoading();
+
+      try {
+        const result = await checkWithAI(text);
+        hideLoading();
+
+        if (result.risk_level === 'low') {
+          // リスク低: そのまま送信
+          addMessage(text);
+        } else {
+          // リスク検知: ポップアップ表示
+          currentCheckResult = result;
+          showPopup(result);
+        }
+      } catch (error) {
+        hideLoading();
+        showError('AIチェック機能が一時的に利用できません');
+        // エラー時もメッセージは送信可能
+        addMessage(text);
+      }
+    }
+
+    function checkWithAI(message) {
+      return new Promise((resolve, reject) => {
+        // タイムアウト設定（3秒）
+        const timeout = setTimeout(() => {
+          reject(new Error('タイムアウト'));
+        }, 3000);
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            clearTimeout(timeout);
+            resolve(result);
+          })
+          .withFailureHandler((error) => {
+            clearTimeout(timeout);
+            reject(error);
+          })
+          .checkMessageWithAI(message);
+      });
+    }
+
+    function addMessage(text) {
+      const now = new Date();
+      const time = `${now.getMonth() + 1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+      messages.push({ type: 'operator', text, time });
+      renderMessages();
+      messageInput.value = '';
+    }
+
+    // ===== ポップアップ =====
+    function showPopup(result) {
+      const header = document.getElementById('popupHeader');
+      const icon = document.getElementById('popupIcon');
+      const title = document.getElementById('popupTitle');
+
+      // リスクレベルに応じたスタイル
+      header.className = 'popup-header ' + result.risk_level;
+      if (result.risk_level === 'high') {
+        icon.textContent = '🚨';
+        title.textContent = '高リスクを検知しました';
+      } else {
+        icon.textContent = '⚠️';
+        title.textContent = '注意が必要な表現があります';
+      }
+
+      // 内容設定
+      document.getElementById('popupWarning').textContent = result.warning;
+      document.getElementById('popupCategories').innerHTML = result.categories
+        .map(cat => `<span class="popup-category">${escapeHtml(cat)}</span>`).join('');
+      document.getElementById('popupExpressions').innerHTML = result.detected_expressions
+        .map(exp => `<mark>${escapeHtml(exp)}</mark>`).join('、');
+
+      // 言い換え案
+      const altList = document.getElementById('alternativesList');
+      altList.innerHTML = result.alternatives.map((alt, i) => `
+        <div class="alternative-item">
+          <span class="alternative-text">${escapeHtml(alt)}</span>
+          <button class="alternative-btn" onclick="insertAlternative(${i})">挿入</button>
+        </div>
+      `).join('');
+
+      popupOverlay.classList.add('show');
+    }
+
+    function hidePopup() {
+      popupOverlay.classList.remove('show');
+    }
+
+    function insertAlternative(index) {
+      if (currentCheckResult && currentCheckResult.alternatives[index]) {
+        messageInput.value = currentCheckResult.alternatives[index];
+        hidePopup();
+        messageInput.focus();
+      }
+    }
+
+    // ===== ローディング・エラー =====
+    function showLoading() {
+      loadingOverlay.classList.add('show');
+      sendBtn.disabled = true;
+    }
+
+    function hideLoading() {
+      loadingOverlay.classList.remove('show');
+      sendBtn.disabled = false;
+    }
+
+    function showError(message) {
+      errorToast.textContent = message;
+      errorToast.classList.add('show');
+      setTimeout(() => errorToast.classList.remove('show'), 3000);
+    }
+
+    // ===== ユーティリティ =====
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // グローバル関数（onclick用）
+    window.insertAlternative = insertAlternative;
+
+    // 初期化実行
+    init();
+  </script>
+</body>
+</html>
